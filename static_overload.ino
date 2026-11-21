@@ -26,6 +26,7 @@ struct Result {
   float F_net;
   float cogX, cogY;
   float dx, dy;
+  float Mx, My; 
   bool tooLight;
   const char* dirV;
   const char* dirH;
