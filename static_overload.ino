@@ -44,6 +44,17 @@ Result evaluate(float F_RT, float F_LT, float F_RB, float F_LB) {
   float centreX = l / 2.0;
   float centreY = b / 2.0;
 
+  // payload limit first: the moment limit is built from it
+  float gvw = emptyWeight / emptyRatio;
+  r.payloadLimit = gvw - emptyWeight;
+  if (r.payloadLimit > 4.0 * cellMax) r.payloadLimit = 4.0 * cellMax;
+  r.overload = (r.F_net > r.payloadLimit);
+
+  // moment about the board centre (no division, so noise stays small)
+  r.Mx = (F_RT + F_RB) * l - r.F_net * centreX;
+  r.My = (F_RT + F_LT) * b - r.F_net * centreY;
+
+  // offset, for display only
   if (r.F_net > 0.0) {
     r.cogX = (F_RT * l + F_RB * l) / r.F_net;
     r.cogY = (F_RT * b + F_LT * b) / r.F_net;
@@ -51,26 +62,20 @@ Result evaluate(float F_RT, float F_LT, float F_RB, float F_LB) {
     r.cogX = centreX;
     r.cogY = centreY;
   }
-
   r.dx = r.cogX - centreX;
   r.dy = r.cogY - centreY;
-  float limitX = tolX * (l / 2.0);
-  float limitY = tolY * (b / 2.0);
+
+  // moment limit = full payload at the allowed offset
+  float limitMx = r.payloadLimit * tolX * (l / 2.0);
+  float limitMy = r.payloadLimit * tolY * (b / 2.0);
 
   r.tooLight = (r.F_net < minTotal);
   r.dirV = "";
   r.dirH = "";
-  if (!r.tooLight) {
-    if (r.dy > limitY)       r.dirV = "TOP";
-    else if (r.dy < -limitY) r.dirV = "BOTTOM";
-    if (r.dx > limitX)       r.dirH = "RIGHT";
-    else if (r.dx < -limitX) r.dirH = "LEFT";
-  }
-
-  float gvw = emptyWeight / emptyRatio;
-  r.payloadLimit = gvw - emptyWeight;
-  if (r.payloadLimit > 4.0 * cellMax) r.payloadLimit = 4.0 * cellMax;
-  r.overload = (r.F_net > r.payloadLimit);
+  if (r.My > limitMy)       r.dirV = "TOP";
+  else if (r.My < -limitMy) r.dirV = "BOTTOM";
+  if (r.Mx > limitMx)       r.dirH = "RIGHT";
+  else if (r.Mx < -limitMx) r.dirH = "LEFT";
 
   r.cellOver[0] = (F_RT > cellMax);
   r.cellOver[1] = (F_LT > cellMax);
@@ -165,6 +170,10 @@ void printResult(const Result& r) {
   Serial.print(r.dx);
   Serial.print(", ");
   Serial.println(r.dy);
+  Serial.print("Moment Mx, My (g*mm): ");
+  Serial.print(r.Mx);
+  Serial.print(", ");
+  Serial.println(r.My);
 
   if (r.tooLight) {
     Serial.println("Too light to judge");
@@ -189,6 +198,7 @@ void printResult(const Result& r) {
     if (r.cellOver[3]) Serial.print(" LB");
     Serial.println();
   }
+
   Serial.println("----------------");
 }
 
